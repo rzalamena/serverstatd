@@ -1,0 +1,4 @@
+/*.o
+/serverstatd
+/imsg/*.o
+/y.tab.c
