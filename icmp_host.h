@@ -79,7 +79,7 @@ struct icmp_packet {
 #define IH_DEF_RETRYCOUNT (3)
 
 enum icmp_host_status {
-	IHS_DOWM = 0,
+	IHS_DOWN = 0,
 	IHS_UP = 1,
 };
 
@@ -116,5 +116,8 @@ struct icmp_packet *find_ip(struct icmp_host *, uint16_t);
 void free_ip(struct icmp_host *, struct icmp_packet *);
 
 void reschedule_icmp_send(struct icmp_host *);
+
+int register_icmp_host(struct icmp_host *);
+void log_icmp_host_event(struct icmp_host *, enum icmp_host_status);
 
 #endif /* _ICMP_HOST_H_ */

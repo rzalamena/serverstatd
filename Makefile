@@ -2,7 +2,7 @@ CC = cc
 Y = yacc
 
 PROG = serverstatd
-OBJS = serverstatd.o log.o icmp.o icmp_host.o y.tab.o
+OBJS = db.o serverstatd.o log.o icmp.o icmp_host.o y.tab.o
 
 TARGET =
 
@@ -42,7 +42,7 @@ CFLAGS += -Iimsg
 OBJS += imsg/imsg.o imsg/imsg-buffer.o
 endif
 
-LDFLAGS += -levent
+LDFLAGS += -levent -lsqlite3
 
 .PHONY: clean
 

@@ -155,7 +155,7 @@ icmp_raw_socket_handler(evutil_socket_t sd, short ev, void *arg)
 		return;
 	}
 
-	if (ih->ih_ihs == IHS_DOWM) {
+	if (ih->ih_ihs == IHS_DOWN) {
 		log_debug("%s (%s) is up", ih->ih_name, ih->ih_address);
 		ih->ih_ihs = IHS_UP;
 		compose_to_father(pc, IMSG_HOST_UP, ih, sizeof(*ih));
@@ -218,7 +218,7 @@ ih_timeout(evutil_socket_t bula, short ev, void *arg)
 	if (ih->ih_ihs == IHS_UP &&
 	    ih->ih_retrycount == 0) {
 		log_debug("%s (%s) is down", ih->ih_name, ih->ih_address);
-		ih->ih_ihs = IHS_DOWM;
+		ih->ih_ihs = IHS_DOWN;
 
 		compose_to_father(pc, IMSG_HOST_DOWN, ih, sizeof(*ih));
 

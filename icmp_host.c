@@ -202,3 +202,104 @@ in_cksum(const uint16_t *addr, int len)
 	answer = ~sum;				/* truncate to 16 bits */
 	return (answer);
 }
+
+/* Register ICMP host to database. */
+int
+register_icmp_host(struct icmp_host *ih)
+{
+	struct sqlite3_stmt *ss;
+
+	/* If it exists, just quit. */
+	if (icmp_host_db_id(ih->ih_name))
+		return (0);
+
+	ss = db_prepare("INSERT INTO icmp_hosts(name, address) VALUES (?, ?);");
+	if (ss == NULL) {
+		log_warnx("%s: failed to prepare ICMP host registration",
+		    __FUNCTION__);
+		return (-1);
+	}
+
+	if (db_bindf(ss, "%s%s",
+	    ih->ih_name, strlen(ih->ih_name),
+	    ih->ih_address, strlen(ih->ih_address))) {
+		db_finalize(&ss);
+		log_warnx("%s: failed to bind values", __FUNCTION__);
+		return (-1);
+	}
+
+	if (db_run(ss) != SQLITE_OK) {
+		db_finalize(&ss);
+		log_warnx("%s: failed to save", __FUNCTION__);
+		return (-1);
+	}
+
+	db_finalize(&ss);
+	return (0);
+}
+
+/* Find ICMP host row id */
+static uint32_t
+icmp_host_db_id(const char *name)
+{
+	struct sqlite3_stmt *ss;
+	uint32_t dbid;
+
+	ss = db_prepare("SELECT id FROM icmp_hosts WHERE name = ?;");
+	if (ss == NULL)
+		return (0);
+
+	if (db_bindf(ss, "%s", name, strlen(name))) {
+		log_warnx("%s: failed to bind query", __FUNCTION__);
+		return (0);
+	}
+
+	if (db_run(ss) != SQLITE_ROW) {
+		db_finalize(&ss);
+		log_warnx("%s: failed to find '%s'", __FUNCTION__, name);
+		return (0);
+	}
+
+	if (db_loadf(ss, "%i", &dbid)) {
+		db_finalize(&ss);
+		log_warnx("%s: failed to load result", __FUNCTION__);
+		return (0);
+	}
+
+	db_finalize(&ss);
+	return (dbid);
+}
+
+/* Log ICMP host events to the database. */
+void
+log_icmp_host_event(struct icmp_host *ih, enum icmp_host_status ihs)
+{
+	struct sqlite3_stmt *ss;
+	uint32_t dbid;
+
+	switch (ihs) {
+	case IHS_UP:
+		log_info("Host %s (%s) is now online",
+		    ih->ih_name, ih->ih_address);
+		break;
+	case IHS_DOWN:
+		log_info("Host %s (%s) is now offline",
+		    ih->ih_name, ih->ih_address);
+		break;
+	default:
+		log_warnx("Invalid ICMP host event");
+		return;
+	}
+
+	dbid = icmp_host_db_id(ih->ih_name);
+
+	ss = db_prepare("INSERT INTO icmp_host_events (icmp_host_id, event) VALUES (?, ?);");
+	if (ss == NULL)
+		log_warnx("# Failed to log host event");
+
+	db_bindf(ss, "%i%i", dbid, ihs);
+	if (db_run(ss) != SQLITE_OK)
+		log_warnx("%s: failed to log event", __FUNCTION__);
+
+	db_finalize(&ss);
+}

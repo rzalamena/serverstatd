@@ -27,8 +27,16 @@
 #include <imsg.h>
 
 #include <errno.h>
+#include <string.h>
+
+#include <sqlite3.h>
 
 #include "icmp_host.h"
+
+#ifndef MIN
+#define MIN(x, y) \
+	(((x) > (y)) ? (y) : (x))
+#endif /* MIN */
 
 #define NOF(total, ssize) \
 	((total) / (ssize))
@@ -66,6 +74,18 @@ extern struct serverstatd_conf sc;
 void pc_add(struct event_base *, struct proc_ctx *, int, event_callback_fn);
 int compose_to_child(struct proc_ctx *, uint32_t, int, const void *, uint16_t);
 int compose_to_father(struct proc_ctx *, uint32_t, const void *, uint16_t);
+
+/* db.c */
+int db_init(const char *);
+int db_close(void);
+struct sqlite3_stmt *db_prepare(const char *);
+struct sqlite3_stmt *db_prepare_len(const char *, int);
+int db_bindf(struct sqlite3_stmt *, const char *, ...);
+int db_run(struct sqlite3_stmt *);
+int db_loadf(struct sqlite3_stmt *, const char *, ...);
+void db_finalize(struct sqlite3_stmt **);
+int db_execute_len(const char *, size_t);
+int db_execute(const char *);
 
 /* parse.y */
 int parse_config(const char *, struct serverstatd_conf *);

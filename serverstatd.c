@@ -112,13 +112,11 @@ main_dispatcher(evutil_socket_t sd, short ev, void *arg)
 			break;
 		case IMSG_HOST_UP:
 			ih = imsg.data;
-			log_info("Host %s (%s) is now online",
-			    ih->ih_name, ih->ih_address);
+			log_icmp_host_event(ih, IHS_UP);
 			break;
 		case IMSG_HOST_DOWN:
 			ih = imsg.data;
-			log_info("Host %s (%s) is now offline",
-			    ih->ih_name, ih->ih_address);
+			log_icmp_host_event(ih, IHS_DOWN);
 			break;
 
 		default:
@@ -244,6 +242,31 @@ launch_proc(struct proc_ctx *pc)
 	_exit(0);
 }
 
+/* Initialize database, create tables and fill first infos. */
+static void
+db_initialize(void)
+{
+	struct icmp_host *ih;
+
+	db_init(":memory:");
+	db_execute("							\
+	CREATE TABLE IF NOT EXISTS icmp_hosts (				\
+		id INTEGER PRIMARY KEY AUTOINCREMENT,			\
+		name TEXT UNIQUE,					\
+		address TEXT						\
+	);");
+	db_execute("CREATE UNIQUE INDEX IF NOT EXISTS icmp_host_names ON icmp_hosts(name);");
+	db_execute("							\
+	CREATE TABLE IF NOT EXISTS icmp_host_events (			\
+		id INTEGER PRIMARY KEY AUTOINCREMENT,			\
+		icmp_host_id INTEGER,					\
+		event INTEGER);"
+	);
+
+	TAILQ_FOREACH(ih, &sc.sc_ihlist, ih_entry)
+		register_icmp_host(ih);
+}
+
 static void
 usage(void)
 {
@@ -324,6 +347,8 @@ main(int argc, char *argv[])
 	evsignal_add(evsig_hup, NULL);
 
 	pc_add(eb, &pcs[0], pcs[0].pc_sp[0], main_dispatcher);
+
+	db_initialize();
 
 	log_info("started");
 
